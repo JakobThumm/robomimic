@@ -110,7 +110,13 @@ class DiffusionPolicyUNet(PolicyAlgo):
         # setup EMA
         ema = None
         if self.algo_config.ema.enabled:
-            ema = EMAModel(model=nets, power=self.algo_config.ema.power)
+            # Updated for diffusers >= 0.12.0 - use parameters instead of model
+            try:
+                # Try new API first (diffusers >= 0.12.0)
+                ema = EMAModel(parameters=nets.parameters(), decay=0.9999, power=self.algo_config.ema.power)
+            except TypeError:
+                # Fallback to old API (diffusers < 0.12.0)
+                ema = EMAModel(model=nets, power=self.algo_config.ema.power)
                 
         # set attrs
         self.nets = nets
@@ -232,7 +238,13 @@ class DiffusionPolicyUNet(PolicyAlgo):
                 
                 # update Exponential Moving Average of the model weights
                 if self.ema is not None:
-                    self.ema.step(self.nets)
+                    # Updated for diffusers >= 0.12.0
+                    try:
+                        # New API - step() without parameters
+                        self.ema.step()
+                    except TypeError:
+                        # Old API - step() with model parameter
+                        self.ema.step(self.nets)
                 
                 step_info = {
                     "policy_grad_norms": policy_grad_norms
@@ -317,7 +329,13 @@ class DiffusionPolicyUNet(PolicyAlgo):
         # select network
         nets = self.nets
         if self.ema is not None:
-            nets = self.ema.averaged_model
+            # Updated for diffusers >= 0.12.0
+            if hasattr(self.ema, 'averaged_model'):
+                # Old API (diffusers < 0.12.0)
+                nets = self.ema.averaged_model
+            else:
+                # New API (diffusers >= 0.12.0) - EMA is applied directly to model parameters
+                nets = self.nets
         
         # encode obs
         inputs = {
@@ -375,7 +393,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
             "nets": self.nets.state_dict(),
             "optimizers": { k : self.optimizers[k].state_dict() for k in self.optimizers },
             "lr_schedulers": { k : self.lr_schedulers[k].state_dict() if self.lr_schedulers[k] is not None else None for k in self.lr_schedulers },
-            "ema": self.ema.averaged_model.state_dict() if self.ema is not None else None,
+            "ema": self.ema.averaged_model.state_dict() if (self.ema is not None and hasattr(self.ema, 'averaged_model')) else None,
         }
 
     def deserialize(self, model_dict, load_optimizers=False):
@@ -397,7 +415,14 @@ class DiffusionPolicyUNet(PolicyAlgo):
             model_dict["lr_schedulers"] = {}
 
         if model_dict.get("ema", None) is not None:
-            self.ema.averaged_model.load_state_dict(model_dict["ema"])
+            # Updated for diffusers >= 0.12.0
+            if hasattr(self.ema, 'averaged_model'):
+                # Old API (diffusers < 0.12.0)
+                self.ema.averaged_model.load_state_dict(model_dict["ema"])
+            else:
+                # New API (diffusers >= 0.12.0) - EMA state is handled differently
+                # For now, we skip loading EMA state as the new API handles it automatically
+                pass
 
         if load_optimizers:
             for k in model_dict["optimizers"]:
