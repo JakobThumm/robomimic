@@ -93,7 +93,7 @@ class EnvRobosuite(EB.EnvBase):
             camera_depths=use_depth_obs,
         )
         if render and self.is_v15_or_higher:
-            update_kwargs["renderer"] = "mujoco"
+            update_kwargs["renderer"] = "mjviewer"
         kwargs.update(update_kwargs)
 
         if self._is_v1:

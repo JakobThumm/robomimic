@@ -471,7 +471,7 @@ def env_from_checkpoint(ckpt_path=None, ckpt_dict=None, env_name=None, render=Fa
     # metadata from model dict to get info needed to create environment
     env_meta = ckpt_dict["env_metadata"]
     shape_meta = ckpt_dict["shape_metadata"]
-
+    env_meta["env_name"] = env_name if env_name is not None else env_meta["env_name"]
     # create env from saved metadata
     env = EnvUtils.create_env_from_metadata(
         env_meta=env_meta, 
@@ -482,6 +482,8 @@ def env_from_checkpoint(ckpt_path=None, ckpt_dict=None, env_name=None, render=Fa
         use_depth_obs=shape_meta.get("use_depths", False),
     )
     config, _ = config_from_checkpoint(algo_name=ckpt_dict["algo_name"], ckpt_dict=ckpt_dict, verbose=False)
+    # if env_meta['env_kwargs']['controller_configs']['body_parts']['right']['type'] == "OSC_POSE" and "HumanEnv" in env_name:
+    #     env = EnvUtils.wrap_with_ik_wrapper(env)
     env = EnvUtils.wrap_env_from_config(env, config=config) # apply environment wrapper, if applicable
     if verbose:
         print("============= Loaded Environment =============")

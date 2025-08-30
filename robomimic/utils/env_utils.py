@@ -4,6 +4,7 @@ wrappers provided by the repository, and with environment metadata saved
 in dataset files.
 """
 from copy import deepcopy
+import re
 import robomimic.envs.env_base as EB
 from robomimic.utils.log_utils import log_warning
 
@@ -41,6 +42,9 @@ def get_env_class(env_meta=None, env_type=None, env=None):
     elif env_type == EB.EnvType.IG_MOMART_TYPE:
         from robomimic.envs.env_ig_momart import EnvGibsonMOMART
         return EnvGibsonMOMART
+    elif env_type == EB.EnvType.HUMAN_ROBOT_GYM_TYPE:
+        from robomimic.envs.env_human_robot_gym import EnvHumanRobotGym
+        return EnvHumanRobotGym
     raise Exception("code should never reach this point")
 
 
@@ -65,10 +69,16 @@ def get_env_type(env_meta=None, env_type=None, env=None):
     checks = [(env_meta is not None), (env_type is not None), (env is not None)]
     assert sum(checks) == 1, "should provide only one of env_meta, env_type, env"
     if env_meta is not None:
-        env_type = env_meta["type"]
+        if 'HumanEnv' in env_meta.get("env_name", ""):
+            return EB.EnvType.HUMAN_ROBOT_GYM_TYPE
+        else:
+            return env_meta["type"]
     elif env is not None:
-        env_type = env.type
-    return env_type
+        return env.type
+    elif env_type is not None:
+        return env_type
+    else:
+        raise Exception("Neither env_meta, env_type, nor env was provided")
 
 
 def check_env_type(type_to_check, env_meta=None, env_type=None, env=None):
@@ -331,6 +341,25 @@ def set_env_specific_obs_processing(env_meta=None, env_type=None, env=None):
         DepthModality.set_obs_unprocessor(unprocessor=(
             lambda obs: unprocess_frame(frame=obs, channel_dim=1, scale=None)
         ))
+
+
+# def wrap_with_ik_wrapper(env):
+#     """
+#     Wraps robosuite environment with IKPositionDeltaWrapper.
+
+#     Args:
+#         env (EnvRobosuite): robosuite environment to wrap
+
+#         urdf_file (str): path to robot urdf file for pybullet
+#     """
+#     from human_robot_gym.wrappers.ik_position_delta_wrapper import IKPositionDeltaWrapper
+#     from human_robot_gym.utils.mjcf_utils import (
+#         file_path_completion
+#     )
+#     pybullet_urdf_file = file_path_completion(
+#         "models/assets/robots/panda/panda_with_gripper.urdf"
+#     )
+#     return IKPositionDeltaWrapper(env=env, urdf_file=pybullet_urdf_file)
 
 
 def wrap_env_from_config(env, config):
