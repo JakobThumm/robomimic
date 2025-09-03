@@ -136,7 +136,15 @@ class EnvRobosuite(EB.EnvBase):
             done (bool): whether the task is done
             info (dict): extra information
         """
+        robot = self.env.robots[0]
+        controller = robot.composite_controller.part_controllers["right"]
+        ref_name = controller.ref_name
+        ref_id = self.env.sim.model.site_name2id(ref_name)
+        ref_pos_before = np.array(self.env.sim.data.site_xpos[ref_id])
         obs, r, done, info = self.env.step(action)
+        ref_pos_after = np.array(self.env.sim.data.site_xpos[ref_id])
+        np.set_printoptions(formatter={'float': lambda x: "{0:0.4f}".format(x)})
+        print(f"Step {self.env.timestep}, Action: {action}, delta EEF pos: {ref_pos_after - ref_pos_before}, Reward: {r}")
         obs = self.get_observation(obs)
         info["is_success"] = self.is_success()
         return obs, r, self.is_done(), info
