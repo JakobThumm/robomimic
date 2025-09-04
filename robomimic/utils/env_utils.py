@@ -343,25 +343,6 @@ def set_env_specific_obs_processing(env_meta=None, env_type=None, env=None):
         ))
 
 
-# def wrap_with_ik_wrapper(env):
-#     """
-#     Wraps robosuite environment with IKPositionDeltaWrapper.
-
-#     Args:
-#         env (EnvRobosuite): robosuite environment to wrap
-
-#         urdf_file (str): path to robot urdf file for pybullet
-#     """
-#     from human_robot_gym.wrappers.ik_position_delta_wrapper import IKPositionDeltaWrapper
-#     from human_robot_gym.utils.mjcf_utils import (
-#         file_path_completion
-#     )
-#     pybullet_urdf_file = file_path_completion(
-#         "models/assets/robots/panda/panda_with_gripper.urdf"
-#     )
-#     return IKPositionDeltaWrapper(env=env, urdf_file=pybullet_urdf_file)
-
-
 def wrap_env_from_config(env, config):
     """
     Wraps environment using the provided Config object to determine which wrappers

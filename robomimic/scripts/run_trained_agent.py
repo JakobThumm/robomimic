@@ -190,7 +190,7 @@ def run_trained_agent(args):
     device = TorchUtils.get_torch_device(try_to_use_cuda=True)
 
     # restore policy
-    policy, ckpt_dict = FileUtils.policy_from_checkpoint(ckpt_path=ckpt_path, device=device, verbose=True)
+    policy, ckpt_dict = FileUtils.policy_from_checkpoint(ckpt_path=ckpt_path, device=device, override_config=args.config, verbose=True)
 
     # read rollout settings
     rollout_num_episodes = args.n_rollouts
@@ -365,6 +365,14 @@ if __name__ == "__main__":
         type=int,
         default=None,
         help="(optional) set seed for rollouts",
+    )
+
+    # config override
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="(optional) path to config json file to override the one in the checkpoint",
     )
 
     args = parser.parse_args()

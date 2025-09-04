@@ -90,6 +90,7 @@ class EnvHumanRobotGym(EnvRobosuite):
         controller_config = {'body_parts': {'right': {}}}
         controller_config['body_parts']['right'] = merge_configs(failsafe_config['body_parts']['right'], robot_config)
         controller_configs = [controller_config]
+        use_waypoints_action = kwargs.get("use_waypoints_action", False)
         n_waypoints = kwargs.get("n_waypoints", 1)
 
         update_kwargs = dict(
@@ -100,7 +101,7 @@ class EnvHumanRobotGym(EnvRobosuite):
             horizon=kwargs.get("max_steps", 400),
             hard_reset=False,
             controller_configs=controller_configs,
-            shield_type="SSM",
+            shield_type="OFF",
             visualize_failsafe_controller=False,
             visualize_pinocchio=False,
             base_human_pos_offset=[0.0, 0.0, 0.0],
@@ -109,7 +110,7 @@ class EnvHumanRobotGym(EnvRobosuite):
             human_rand=[0.0, 0.0, 0.0],
             human_animation_names=["SinglePoint/left_right"],
             human_animation_freq=20,
-            use_waypoints_action=True,
+            use_waypoints_action=use_waypoints_action,
             n_waypoints=n_waypoints,
         )
         kwargs.update(update_kwargs)
@@ -123,15 +124,26 @@ class EnvHumanRobotGym(EnvRobosuite):
         pybullet_urdf_file = file_path_completion(
             "models/assets/robots/panda/panda_with_gripper.urdf"
         )
-        env = IKWayPointsDeltaWrapper(
-            env=env,
-            urdf_file=pybullet_urdf_file,
-            action_limits=[
-                original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
-                original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
-            ],
-            use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta",
-            n_waypoints=n_waypoints
-        )
+        if use_waypoints_action:
+            env = IKWayPointsDeltaWrapper(
+                env=env,
+                urdf_file=pybullet_urdf_file,
+                action_limits=[
+                    original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
+                    original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
+                ],
+                use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta",
+                n_waypoints=n_waypoints
+            )
+        else:
+            env = IKPositionDeltaWrapper(
+                env=env,
+                urdf_file=pybullet_urdf_file,
+                action_limits=[
+                    original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
+                    original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
+                ],
+                use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta"
+            )
 
         return env

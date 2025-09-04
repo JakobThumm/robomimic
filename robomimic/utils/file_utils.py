@@ -370,7 +370,7 @@ def config_from_checkpoint(algo_name=None, ckpt_path=None, ckpt_dict=None, verbo
     return config, ckpt_dict
 
 
-def policy_from_checkpoint(device=None, ckpt_path=None, ckpt_dict=None, verbose=False):
+def policy_from_checkpoint(device=None, ckpt_path=None, ckpt_dict=None, override_config=None, verbose=False):
     """
     This function restores a trained policy from a checkpoint file or
     loaded model dictionary.
@@ -381,6 +381,8 @@ def policy_from_checkpoint(device=None, ckpt_path=None, ckpt_dict=None, verbose=
         ckpt_path (str): Path to checkpoint file. Only needed if not providing @ckpt_dict.
 
         ckpt_dict(dict): Loaded model checkpoint dictionary. Only needed if not providing @ckpt_path.
+
+        override_config (dict): if provided, override config values loaded from checkpoint
 
         verbose (bool): if True, include print statements
 
@@ -393,6 +395,12 @@ def policy_from_checkpoint(device=None, ckpt_path=None, ckpt_dict=None, verbose=
             re-loading checkpoint from disk multiple times)
     """
     ckpt_dict = maybe_dict_from_checkpoint(ckpt_path=ckpt_path, ckpt_dict=ckpt_dict)
+
+    # override config if provided
+    if override_config is not None:
+        with open(override_config, 'r') as f:
+            new_config = json.load(f)
+        ckpt_dict["config"] = json.dumps(new_config)
 
     # algo name and config from model dict
     algo_name, _ = algo_name_from_checkpoint(ckpt_dict=ckpt_dict)
@@ -473,20 +481,19 @@ def env_from_checkpoint(ckpt_path=None, ckpt_dict=None, env_name=None, render=Fa
     shape_meta = ckpt_dict["shape_metadata"]
     env_meta["env_name"] = env_name if env_name is not None else env_meta["env_name"]
     config, _ = config_from_checkpoint(algo_name=ckpt_dict["algo_name"], ckpt_dict=ckpt_dict, verbose=False)
-    env_meta["env_kwargs"]["n_waypoints"] = config['algo']['horizon']['action_horizon']
+    from robomimic.utils.python_utils import deep_update
+    deep_update(env_meta, config.experiment.env_meta_update_dict)
 
     # create env from saved metadata
     env = EnvUtils.create_env_from_metadata(
-        env_meta=env_meta, 
-        env_name=env_name, 
-        render=render, 
+        env_meta=env_meta,
+        env_name=env_name,
+        render=render,
         render_offscreen=render_offscreen,
         use_image_obs=shape_meta.get("use_images", False),
         use_depth_obs=shape_meta.get("use_depths", False),
     )
-    # if env_meta['env_kwargs']['controller_configs']['body_parts']['right']['type'] == "OSC_POSE" and "HumanEnv" in env_name:
-    #     env = EnvUtils.wrap_with_ik_wrapper(env)
-    env = EnvUtils.wrap_env_from_config(env, config=config) # apply environment wrapper, if applicable
+    env = EnvUtils.wrap_env_from_config(env, config=config)  # apply environment wrapper, if applicable
     if verbose:
         print("============= Loaded Environment =============")
         print(env)

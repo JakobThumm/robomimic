@@ -293,25 +293,29 @@ class DiffusionPolicyUNet(PolicyAlgo):
         Returns:
             action (torch.Tensor): action tensor [1, Da]
         """
-        # obs_dict: key: [1,D]
-        To = self.algo_config.horizon.observation_horizon
-        Ta = self.algo_config.horizon.action_horizon
-        
-        if len(self.action_queue) == 0:
-            # no actions left, run inference
-            # [1,T,Da]
+        if "use_waypoints_action" in self.algo_config and self.algo_config.use_waypoints_action:
             action_sequence = self._get_action_trajectory(obs_dict=obs_dict)
+            return action_sequence.flatten(start_dim=1)
+        else:
+            # obs_dict: key: [1,D]
+            To = self.algo_config.horizon.observation_horizon
+            Ta = self.algo_config.horizon.action_horizon
             
-            # put actions into the queue
-            self.action_queue.extend(action_sequence[0])
-        
-        # has action, execute from left to right
-        # [Da]
-        action = self.action_queue.popleft()
-        
-        # [1,Da]
-        action = action.unsqueeze(0)
-        return action
+            if len(self.action_queue) == 0:
+                # no actions left, run inference
+                # [1,T,Da]
+                action_sequence = self._get_action_trajectory(obs_dict=obs_dict)
+                
+                # put actions into the queue
+                self.action_queue.extend(action_sequence[0])
+            
+            # has action, execute from left to right
+            # [Da]
+            action = self.action_queue.popleft()
+            
+            # [1,Da]
+            action = action.unsqueeze(0)
+            return action
         
     def _get_action_trajectory(self, obs_dict, goal_dict=None):
         assert not self.nets.training
