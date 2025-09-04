@@ -101,11 +101,11 @@ class EnvHumanRobotGym(EnvRobosuite):
             horizon=kwargs.get("max_steps", 400),
             hard_reset=False,
             controller_configs=controller_configs,
-            shield_type="OFF",
-            visualize_failsafe_controller=False,
+            shield_type=kwargs.get("shield_type", "OFF"),
+            visualize_failsafe_controller=True,
             visualize_pinocchio=False,
             base_human_pos_offset=[0.0, 0.0, 0.0],
-            verbose=True,  # Enable verbose output for debugging
+            verbose=False,  # Enable verbose output for debugging
             goal_dist=0.0001,
             human_rand=[0.0, 0.0, 0.0],
             human_animation_names=["SinglePoint/left_right"],
