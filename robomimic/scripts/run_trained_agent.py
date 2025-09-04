@@ -52,10 +52,12 @@ Example usage:
         --dataset_path /path/to/output.hdf5
 """
 import argparse
+import csv
 import json
 import h5py
 import imageio
 import numpy as np
+import os
 from copy import deepcopy
 
 import torch
@@ -117,7 +119,7 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
             act = policy(ob=obs)
 
             # play action
-            next_obs, r, done, _ = env.step(act)
+            next_obs, r, done, info = env.step(act)
 
             # compute reward
             total_reward += r
@@ -155,7 +157,7 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
     except env.rollout_exceptions as e:
         print("WARNING: got rollout exception {}".format(e))
 
-    stats = dict(Return=total_reward, Horizon=(step_i + 1), Success_Rate=float(success))
+    stats = dict(Return=total_reward, Horizon=(step_i + 1), Success_Rate=float(success), Critical_Collisions=info.get("n_collisions_critical", 0))
 
     if return_obs:
         # convert list of dict to dict of list for obs dictionaries (for convenient writes to hdf5 dataset)
@@ -217,11 +219,15 @@ def run_trained_agent(args):
     # maybe create video writer
     video_writer = None
     if write_video:
+        # ensure directory exists
+        os.makedirs(os.path.dirname(args.video_path), exist_ok=True)
         video_writer = imageio.get_writer(args.video_path, fps=20)
 
     # maybe open hdf5 to write rollouts
     write_dataset = (args.dataset_path is not None)
     if write_dataset:
+        # ensure directory exists
+        os.makedirs(os.path.dirname(args.dataset_path), exist_ok=True)
         data_writer = h5py.File(args.dataset_path, "w")
         data_grp = data_writer.create_group("data")
         total_samples = 0
@@ -263,6 +269,47 @@ def run_trained_agent(args):
     avg_rollout_stats["Num_Success"] = np.sum(rollout_stats["Success_Rate"])
     print("Average Rollout Stats")
     print(json.dumps(avg_rollout_stats, indent=4))
+
+    # write CSV if requested
+    if args.csv_path is not None:
+        # ensure directory exists
+        os.makedirs(os.path.dirname(args.csv_path), exist_ok=True)
+        
+        with open(args.csv_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['run_id', 'n_steps', 'success'])
+            for i in range(len(rollout_stats['Horizon'])):
+                writer.writerow([i, int(rollout_stats['Horizon'][i]), int(rollout_stats['Success_Rate'][i])])
+        print(f"Wrote rollout stats to {args.csv_path}")
+        
+        # save config with run args
+        config_path = args.csv_path.replace('.csv', '-config.json')
+        config, _ = FileUtils.config_from_checkpoint(ckpt_dict=ckpt_dict)
+        
+        # add run args to config
+        run_args = {
+            'agent': args.agent,
+            'n_rollouts': args.n_rollouts,
+            'horizon': args.horizon,
+            'env': args.env,
+            'render': args.render,
+            'video_path': args.video_path,
+            'video_skip': args.video_skip,
+            'camera_names': args.camera_names,
+            'dataset_path': args.dataset_path,
+            'dataset_obs': args.dataset_obs,
+            'seed': args.seed,
+            'config': args.config,
+            'csv_path': args.csv_path
+        }
+
+        # convert config to dict and add run args
+        config_dict = json.loads(config.dump())
+        config_dict['run_args'] = run_args
+
+        with open(config_path, 'w') as f:
+            json.dump(config_dict, f, indent=4)
+        print(f"Wrote config to {config_path}")
 
     if write_video:
         video_writer.close()
@@ -373,6 +420,14 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="(optional) path to config json file to override the one in the checkpoint",
+    )
+
+    # CSV output for rollout stats
+    parser.add_argument(
+        "--csv_path",
+        type=str,
+        default=None,
+        help="(optional) if provided, rollout stats will be written to this CSV file",
     )
 
     args = parser.parse_args()

@@ -71,27 +71,31 @@ class EnvHumanRobotGym(EnvRobosuite):
         self._lang_emb = LangUtils.get_lang_emb(self.lang)
 
     def _create_safe_env(self, env_name, **kwargs):
-        original_controller_config = deepcopy(kwargs["controller_configs"])
-        failsafe_config_path = file_path_completion(
-            "controllers/failsafe_controller/config/failsafe.json"
-        )
-        robot_config_path = file_path_completion("models/robots/config/panda.json")
-
-        # Load the failsafe controller config from file
-        import json
-        with open(failsafe_config_path, 'r') as f:
-            failsafe_config = json.load(f)
-
-        # Load robot-specific limits
-        with open(robot_config_path, 'r') as f:
-            robot_config = json.load(f)
-
-        # Merge robot limits into failsafe config
-        controller_config = {'body_parts': {'right': {}}}
-        controller_config['body_parts']['right'] = merge_configs(failsafe_config['body_parts']['right'], robot_config)
-        controller_configs = [controller_config]
+        use_failsafe_controller = kwargs.get("use_failsafe_controller", True)
         use_waypoints_action = kwargs.get("use_waypoints_action", False)
         n_waypoints = kwargs.get("n_waypoints", 1)
+
+        original_controller_config = deepcopy(kwargs["controller_configs"])
+        if use_failsafe_controller:
+            failsafe_config_path = file_path_completion(
+                "controllers/failsafe_controller/config/failsafe.json"
+            )
+            robot_config_path = file_path_completion("models/robots/config/panda.json")
+            # Load the failsafe controller config from file
+            import json
+            with open(failsafe_config_path, 'r') as f:
+                failsafe_config = json.load(f)
+            # Load robot-specific limits
+            with open(robot_config_path, 'r') as f:
+                robot_config = json.load(f)
+            # Merge robot limits into failsafe config
+            controller_config = {'body_parts': {'right': {}}}
+            controller_config['body_parts']['right'] = merge_configs(failsafe_config['body_parts']['right'], robot_config)
+            controller_configs = [controller_config]
+        else:
+            controller_configs = original_controller_config
+            if use_waypoints_action:
+                raise NotImplementedError("Waypoint actions require the failsafe controller.")
 
         update_kwargs = dict(
             robots="Panda",
@@ -101,8 +105,9 @@ class EnvHumanRobotGym(EnvRobosuite):
             horizon=kwargs.get("max_steps", 400),
             hard_reset=False,
             controller_configs=controller_configs,
+            use_failsafe_controller=use_failsafe_controller,
             shield_type=kwargs.get("shield_type", "OFF"),
-            visualize_failsafe_controller=True,
+            visualize_failsafe_controller=False,
             visualize_pinocchio=False,
             base_human_pos_offset=[0.0, 0.0, 0.0],
             verbose=False,  # Enable verbose output for debugging
@@ -121,29 +126,30 @@ class EnvHumanRobotGym(EnvRobosuite):
             **kwargs  # pass through any other kwargs
         )
 
-        pybullet_urdf_file = file_path_completion(
-            "models/assets/robots/panda/panda_with_gripper.urdf"
-        )
-        if use_waypoints_action:
-            env = IKWayPointsDeltaWrapper(
-                env=env,
-                urdf_file=pybullet_urdf_file,
-                action_limits=[
-                    original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
-                    original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
-                ],
-                use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta",
-                n_waypoints=n_waypoints
+        if use_failsafe_controller:
+            pybullet_urdf_file = file_path_completion(
+                "models/assets/robots/panda/panda_with_gripper.urdf"
             )
-        else:
-            env = IKPositionDeltaWrapper(
-                env=env,
-                urdf_file=pybullet_urdf_file,
-                action_limits=[
-                    original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
-                    original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
-                ],
-                use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta"
-            )
+            if use_waypoints_action:
+                env = IKWayPointsDeltaWrapper(
+                    env=env,
+                    urdf_file=pybullet_urdf_file,
+                    action_limits=[
+                        original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
+                        original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
+                    ],
+                    use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta",
+                    n_waypoints=n_waypoints
+                )
+            else:
+                env = IKPositionDeltaWrapper(
+                    env=env,
+                    urdf_file=pybullet_urdf_file,
+                    action_limits=[
+                        original_controller_config['body_parts']['right'].get('output_min', [-0.05, -0.05, -0.05, -0.5, -0.5, -0.5]),
+                        original_controller_config['body_parts']['right'].get('output_max', [0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
+                    ],
+                    use_orientation=original_controller_config['body_parts']['right'].get('input_type', "delta")=="delta"
+                )
 
         return env
