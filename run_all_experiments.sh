@@ -23,7 +23,7 @@ declare -A ENV_MAP=(
 )
 
 # Available environments (based on models found)
-ENVIRONMENTS=("lift" "can" "square") #"tool_hang")
+ENVIRONMENTS=("lift" "can" "square" "tool_hang")
 
 # Experiment configuration directories
 CONFIG_DIRS=("failsafe_single" "failsafe_waypoints" "osc")
