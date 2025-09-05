@@ -2,8 +2,7 @@
 
 # Run all experiments script
 # This script runs trained agents on all experiment configurations systematically
-# Environments are run sequentially to avoid GPU overload
-# Configs within each environment run in parallel
+# All experiments run sequentially for better visibility and control
 
 set -e  # Exit on any error
 
@@ -69,8 +68,8 @@ run_experiment() {
     echo "---"
 }
 
-# Function to run all configs in a directory in parallel
-run_configs_parallel() {
+# Function to run all configs in a directory sequentially
+run_configs_sequential() {
     local env=$1
     local config_dir=$2
     local human_env=$3
@@ -82,25 +81,37 @@ run_configs_parallel() {
         return
     fi
     
-    echo "Starting parallel execution for $env/$config_dir"
+    echo "Starting sequential execution for $env/$config_dir"
+    echo ""
     
-    # Create array to store background job PIDs
-    local pids=()
+    # Count total configs for progress tracking
+    local total_configs=$(find "$full_config_dir" -name "*.json" -type f | wc -l)
+    local current_config=0
     
-    # Launch all configs in parallel
+    # Run all configs sequentially
     for config_file in "$full_config_dir"/*.json; do
         if [ -f "$config_file" ]; then
-            run_experiment "$env" "$config_dir" "$config_file" "$human_env" &
-            pids+=($!)
-        fi
-    done
-    
-    # Wait for all parallel jobs to complete
-    echo "Waiting for all $env/$config_dir experiments to complete..."
-    for pid in "${pids[@]}"; do
-        wait $pid
-        if [ $? -ne 0 ]; then
-            echo "Error: One of the experiments failed (PID: $pid)"
+            ((current_config++))
+            config_name=$(basename "$config_file" .json)
+            
+            echo "========================================"
+            echo "Experiment $current_config/$total_configs: $config_name"
+            echo "Environment: $env | Config Directory: $config_dir"
+            echo "Started at: $(date)"
+            echo "========================================"
+            
+            # Record start time
+            start_time=$(date +%s)
+            
+            run_experiment "$env" "$config_dir" "$config_file" "$human_env"
+            
+            # Calculate duration
+            end_time=$(date +%s)
+            duration=$((end_time - start_time))
+            
+            echo "Experiment completed in ${duration} seconds"
+            echo "Progress: $current_config/$total_configs experiments completed in $env/$config_dir"
+            echo ""
         fi
     done
     
@@ -134,7 +145,7 @@ for env in "${ENVIRONMENTS[@]}"; do
     
     # Run each config directory
     for config_dir in "${CONFIG_DIRS[@]}"; do
-        run_configs_parallel "$env" "$config_dir" "$human_env"
+        run_configs_sequential "$env" "$config_dir" "$human_env"
         echo ""
     done
     
