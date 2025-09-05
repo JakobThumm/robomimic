@@ -81,6 +81,7 @@ To run with GPU (if available), run:
 `docker run --gpus all -it robomimic`
 
 ## Demo commands
+### Training
 First, in the config file `robomimic/exps/templates/diffusion_policy.json`, change the outdir to your desired output directory, full path recommended!
 Train a policy
 ```
@@ -91,6 +92,14 @@ With `tmux`:
 tmux new-session -d -s can-training 'python train.py --config ../exps/templates/diffusion_policy.json --dataset ~/code/robomimic/datasets/can/ph/low_dim_v15.hdf5 --name can'
 ```
 Make sure to check with `tmux attach -t can-training` and then detach with `Ctrl+b` then `d`.
+
+### Evaluation
+```
+tmux new-session -d -s lift-eval './run_all_experiments.sh --name lift'
+tmux new-session -d -s can-eval './run_all_experiments.sh --name can'
+tmux new-session -d -s square-eval './run_all_experiments.sh --name square'
+tmux new-session -d -s tool-hang-eval './run_all_experiments.sh --name tool_hang'
+```
 
 ## Troubleshooting
 
