@@ -57,7 +57,7 @@ else
 fi
 
 # Experiment configuration directories
-CONFIG_DIRS=("failsafe_single" "failsafe_waypoints" "osc")
+CONFIG_DIRS=("failsafe_single" "failsafe_waypoints" "osc" "cbf")
 
 # Function to run a single experiment
 run_experiment() {
