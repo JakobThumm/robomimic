@@ -23,7 +23,7 @@ declare -A ENV_MAP=(
 )
 
 # Available environments (based on models found)
-ENVIRONMENTS=("lift" "can" "square" "tool_hang")
+ENVIRONMENTS=("lift" "can" "square") #"tool_hang")
 
 # Experiment configuration directories
 CONFIG_DIRS=("failsafe_single" "failsafe_waypoints" "osc")
@@ -87,11 +87,14 @@ run_configs_sequential() {
     # Count total configs for progress tracking
     local total_configs=$(find "$full_config_dir" -name "*.json" -type f | wc -l)
     local current_config=0
-    
+    echo "---"
     # Run all configs sequentially
     for config_file in "$full_config_dir"/*.json; do
+        echo "Looking for $config_file"
         if [ -f "$config_file" ]; then
-            ((current_config++))
+            echo "$config_file found"
+            current_config=$((current_config+1))
+            echo "Running config number $current_config"
             config_name=$(basename "$config_file" .json)
             
             echo "========================================"
