@@ -88,7 +88,7 @@
         "max_grad_norm": null
     },
     "algo": {
-        "use_waypoints_action": false,
+        "use_waypoints_action": true,
         "optim_params": {
             "policy": {
                 "optimizer_type": "adamw",
