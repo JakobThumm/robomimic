@@ -100,7 +100,7 @@ class EnvHumanRobotGym(EnvRobosuite):
         update_kwargs = dict(
             robots="Panda",
             robot_base_offset=[0, 0, 0],
-            control_freq=kwargs.get("control_freq", 20) / n_waypoints,  # make sure default is set correctly
+            control_freq=kwargs.get("control_freq", 20) / n_waypoints,
             control_sample_time=kwargs.get("model_timestep", 0.002),
             horizon=kwargs.get("max_steps", 400),
             hard_reset=False,

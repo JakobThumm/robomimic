@@ -277,9 +277,9 @@ def run_trained_agent(args):
         
         with open(args.csv_path, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['run_id', 'n_steps', 'success'])
+            writer.writerow(['run_id', 'n_steps', 'success', 'critical_collisions'])
             for i in range(len(rollout_stats['Horizon'])):
-                writer.writerow([i, int(rollout_stats['Horizon'][i]), int(rollout_stats['Success_Rate'][i])])
+                writer.writerow([i, int(rollout_stats['Horizon'][i]), int(rollout_stats['Success_Rate'][i]), int(rollout_stats['Critical_Collisions'][i])])
         print(f"Wrote rollout stats to {args.csv_path}")
         
         # save config with run args
