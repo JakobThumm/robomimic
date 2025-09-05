@@ -8,11 +8,11 @@
 set +e  # Don't exit on errors - we want to continue with other experiments
 
 # Base directory
-BASE_DIR="/home/jakob/Promotion/code/robomimic"
+BASE_DIR="/home/thumm/code/robomimic"
 cd "$BASE_DIR"
 
 # Activate conda environment
-source ~/anaconda3/etc/profile.d/conda.sh
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate hrgym
 
 # Environment configurations
@@ -125,7 +125,7 @@ run_configs_sequential() {
     fi
     
     echo "Starting sequential execution for $env/$config_dir"
-    echo ""
+    echo "Full config dir $full_config_dir"
     
     # Count total configs for progress tracking
     local total_configs=$(find "$full_config_dir" -name "*.json" -type f | wc -l)

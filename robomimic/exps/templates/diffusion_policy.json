@@ -39,7 +39,7 @@
     },
     "train": {
         "data": null,
-        "output_dir": "../diffusion_policy_trained_models",
+        "output_dir": "/home/thumm/code/robomimic/models/",
         "normalize_weights_by_ds_size": false,
         "num_data_workers": 0,
         "hdf5_cache_mode": "all",
