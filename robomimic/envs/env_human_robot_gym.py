@@ -74,15 +74,17 @@ class EnvHumanRobotGym(EnvRobosuite):
         use_failsafe_controller = kwargs.get("use_failsafe_controller", True)
         use_waypoints_action = kwargs.get("use_waypoints_action", False)
         n_waypoints = kwargs.get("n_waypoints", 1)
+        shield_type = kwargs.get("shield_type", "OFF")
 
         original_controller_config = deepcopy(kwargs["controller_configs"])
         if use_failsafe_controller:
-            failsafe_config_path = file_path_completion(
-                "controllers/failsafe_controller/config/failsafe.json"
-            )
+            pybullet_urdf_file = file_path_completion("models/assets/robots/panda/panda_with_gripper.urdf") 
             robot_config_path = file_path_completion("models/robots/config/panda.json")
-            # Load the failsafe controller config from file
             import json
+            if shield_type == "CBF":
+                failsafe_config_path = file_path_completion("controllers/failsafe_controller/config/cbf_failsafe.json")
+            else:
+                failsafe_config_path = file_path_completion("controllers/failsafe_controller/config/failsafe.json")
             with open(failsafe_config_path, 'r') as f:
                 failsafe_config = json.load(f)
             # Load robot-specific limits
@@ -106,7 +108,7 @@ class EnvHumanRobotGym(EnvRobosuite):
             hard_reset=False,
             controller_configs=controller_configs,
             use_failsafe_controller=use_failsafe_controller,
-            shield_type=kwargs.get("shield_type", "OFF"),
+            shield_type=shield_type,
             visualize_failsafe_controller=False,
             visualize_pinocchio=False,
             base_human_pos_offset=[0.0, 0.0, 0.0],
