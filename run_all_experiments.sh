@@ -71,7 +71,7 @@ run_experiment() {
     local config_name=$(basename "$config_file" .json)
     
     # Define output paths
-    local results_dir="$BASE_DIR/results/$env/ph/$config_dir"
+    local results_dir="$BASE_DIR/results_selection/$env/ph/$config_dir"
     local video_path="$results_dir/video/${config_name}.mp4"
     local csv_path="$results_dir/${config_name}.csv"
     
@@ -117,7 +117,7 @@ run_configs_sequential() {
     local human_env=$3
     local error_log_path=$4
     
-    local full_config_dir="$BASE_DIR/experiment_configs/$config_dir"
+    local full_config_dir="$BASE_DIR/experiment_configs_selection/$config_dir"
     
     if [ ! -d "$full_config_dir" ]; then
         echo "Warning: Config directory does not exist: $full_config_dir"
@@ -244,7 +244,7 @@ for env in "${ENVIRONMENTS[@]}"; do
     
     for config_dir in "${CONFIG_DIRS[@]}"; do
         echo "  Config Directory: $config_dir" >> "$summary_file"
-        results_dir="$BASE_DIR/results/$env/ph/$config_dir"
+        results_dir="$BASE_DIR/results_selection/$env/ph/$config_dir"
         if [ -d "$results_dir" ]; then
             csv_count=$(find "$results_dir" -name "*.csv" | wc -l)
             echo "    CSV files generated: $csv_count" >> "$summary_file"
@@ -253,7 +253,7 @@ for env in "${ENVIRONMENTS[@]}"; do
 done
 
 echo "Summary report saved to: $summary_file"
-echo "All results are stored in: $BASE_DIR/results/"
+echo "All results are stored in: $BASE_DIR/results_selection/"
 
 # Display error summary if there were any failures
 if [ -f "$error_log" ] && [ -s "$error_log" ]; then
