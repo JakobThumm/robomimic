@@ -7,8 +7,8 @@
 
 set +e  # Don't exit on errors - we want to continue with other experiments
 
-# Base directory
-BASE_DIR="/home/thumm/code/robomimic"
+# Base directory - get the directory where this script is located
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BASE_DIR"
 
 # Activate conda environment
