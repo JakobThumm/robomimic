@@ -3,7 +3,7 @@
 # Run all experiments script
 # This script runs trained agents on all experiment configurations systematically
 # Can run all environments or a specific environment using --name parameter
-# Usage: ./run_all_experiments.sh [--name ENVIRONMENT_NAME]
+# Usage: ./run_all_experiments.sh [--name ENVIRONMENT_NAME] [--parallel]
 
 set +e  # Don't exit on errors - we want to continue with other experiments
 
@@ -28,16 +28,24 @@ ENVIRONMENTS=("lift" "can" "square" "tool_hang")
 
 # Parse command line arguments
 SPECIFIC_ENV=""
+PARALLEL_MODE=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --name)
             SPECIFIC_ENV="$2"
             shift 2
             ;;
+        --parallel)
+            PARALLEL_MODE=true
+            shift
+            ;;
         *)
             echo "Unknown parameter: $1"
-            echo "Usage: $0 [--name ENVIRONMENT_NAME]"
+            echo "Usage: $0 [--name ENVIRONMENT_NAME] [--parallel]"
             echo "Available environments: ${ENVIRONMENTS[*]}"
+            echo "Options:"
+            echo "  --name ENV_NAME    Run experiments only for specific environment"
+            echo "  --parallel         Run all experiments in parallel (default: sequential)"
             exit 1
             ;;
     esac
@@ -54,6 +62,14 @@ if [ -n "$SPECIFIC_ENV" ]; then
     echo "Running experiments for environment: $SPECIFIC_ENV"
 else
     echo "Running experiments for all environments: ${ENVIRONMENTS[*]}"
+fi
+
+# Display execution mode
+if [ "$PARALLEL_MODE" = true ]; then
+    echo "Execution mode: PARALLEL (all experiments run simultaneously)"
+    echo "Warning: Parallel mode will use significant system resources"
+else
+    echo "Execution mode: SEQUENTIAL (one experiment at a time)"
 fi
 
 # Experiment configuration directories
@@ -99,15 +115,100 @@ run_experiment() {
     local exit_code=$?
     
     if [ $exit_code -eq 0 ]; then
-        echo "✓ SUCCESS: $env/$config_dir/$config_name"
+        echo "SUCCESS: $env/$config_dir/$config_name"
     else
-        echo "✗ FAILED: $env/$config_dir/$config_name (exit code: $exit_code)"
+        echo "FAILED: $env/$config_dir/$config_name (exit code: $exit_code)"
         # Log failure to error log
         echo "$(date): FAILED - $env/$config_dir/$config_name (exit code: $exit_code)" >> "$error_log_path"
     fi
     echo "---"
     
     return $exit_code
+}
+
+# Function to run all configs in a directory in parallel
+run_configs_parallel() {
+    local env=$1
+    local config_dir=$2
+    local human_env=$3
+    local error_log_path=$4
+    
+    local full_config_dir="$BASE_DIR/experiment_configs_selection/$config_dir"
+    
+    if [ ! -d "$full_config_dir" ]; then
+        echo "Warning: Config directory does not exist: $full_config_dir"
+        return 1
+    fi
+    
+    echo "Starting parallel execution for $env/$config_dir"
+    echo "Full config dir $full_config_dir"
+    
+    # Count total configs
+    local total_configs=$(find "$full_config_dir" -name "*.json" -type f | wc -l)
+    
+    if [ $total_configs -eq 0 ]; then
+        echo "No JSON config files found in $full_config_dir"
+        return 1
+    fi
+    
+    echo "Found $total_configs configurations to run in parallel"
+    echo "---"
+    
+    # Array to store background process PIDs
+    local pids=()
+    
+    # Start all experiments in parallel
+    for config_file in "$full_config_dir"/*.json; do
+        if [ -f "$config_file" ]; then
+            config_name=$(basename "$config_file" .json)
+            echo "Starting parallel experiment: $config_name"
+            
+            # Run experiment in background and capture PID
+            (
+                echo "========================================"
+                echo "Parallel Experiment: $config_name"
+                echo "Environment: $env | Config Directory: $config_dir"
+                echo "Started at: $(date)"
+                echo "========================================"
+                
+                start_time=$(date +%s)
+                
+                if run_experiment "$env" "$config_dir" "$config_file" "$human_env" "$error_log_path"; then
+                    end_time=$(date +%s)
+                    duration=$((end_time - start_time))
+                    echo "SUCCESS: $config_name completed in ${duration} seconds"
+                else
+                    end_time=$(date +%s)
+                    duration=$((end_time - start_time))
+                    echo "FAILED: $config_name failed after ${duration} seconds"
+                fi
+            ) &
+            
+            # Store the PID
+            pids+=($!)
+        fi
+    done
+    
+    echo "All $total_configs experiments started in parallel"
+    echo "Waiting for completion..."
+    
+    # Wait for all background processes to complete
+    local successful_experiments=0
+    local failed_experiments=0
+    
+    for pid in "${pids[@]}"; do
+        if wait "$pid"; then
+            successful_experiments=$((successful_experiments+1))
+        else
+            failed_experiments=$((failed_experiments+1))
+        fi
+    done
+    
+    echo "All $env/$config_dir experiments completed!"
+    echo "Final results: $successful_experiments successful, $failed_experiments failed"
+    echo "========================================"
+    
+    return 0
 }
 
 # Function to run all configs in a directory sequentially
@@ -157,7 +258,7 @@ run_configs_sequential() {
                 successful_experiments=$((successful_experiments+1))
             else
                 failed_experiments=$((failed_experiments+1))
-                echo "⚠️  Experiment failed but continuing with remaining experiments..."
+                echo "Experiment failed but continuing with remaining experiments..."
             fi
             
             # Calculate duration
@@ -214,7 +315,11 @@ for env in "${ENVIRONMENTS[@]}"; do
     
     # Run each config directory
     for config_dir in "${CONFIG_DIRS[@]}"; do
-        run_configs_sequential "$env" "$config_dir" "$human_env" "$error_log"
+        if [ "$PARALLEL_MODE" = true ]; then
+            run_configs_parallel "$env" "$config_dir" "$human_env" "$error_log"
+        else
+            run_configs_sequential "$env" "$config_dir" "$human_env" "$error_log"
+        fi
         echo ""
     done
     
@@ -260,13 +365,13 @@ if [ -f "$error_log" ] && [ -s "$error_log" ]; then
     error_count=$(grep -c "FAILED -" "$error_log" 2>/dev/null || echo "0")
     if [ "$error_count" -gt 0 ]; then
         echo ""
-        echo "⚠️  Warning: $error_count experiments failed during execution"
+        echo "Warning: $error_count experiments failed during execution"
         echo "Check error log for details: $error_log"
     else
         echo ""
-        echo "✓ All experiments completed successfully!"
+        echo "All experiments completed successfully!"
     fi
 else
     echo ""
-    echo "✓ All experiments completed successfully!"
+    echo "All experiments completed successfully!"
 fi
