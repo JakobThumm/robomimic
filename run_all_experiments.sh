@@ -11,10 +11,6 @@ set +e  # Don't exit on errors - we want to continue with other experiments
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BASE_DIR"
 
-# Activate conda environment
-source ${CONDA_PATH}/etc/profile.d/conda.sh
-conda activate hrgym
-
 # Environment configurations
 declare -A ENV_MAP=(
     ["lift"]="LiftHumanEnv"
@@ -76,6 +72,27 @@ if [ "$PARALLEL_MODE" = true ]; then
     echo "Warning: Parallel mode will use significant system resources"
 else
     echo "Execution mode: SEQUENTIAL (one experiment at a time)"
+fi
+
+# Activate conda environment
+echo "Debug: CONDA_PATH = '${CONDA_PATH}'"
+
+# Expand tilde in conda path if present, otherwise use as-is
+if [[ "${CONDA_PATH}" == ~* ]]; then
+    CONDA_PATH_EXPANDED="${CONDA_PATH/#\~/$HOME}"
+else
+    CONDA_PATH_EXPANDED="${CONDA_PATH}"
+fi
+
+echo "Using conda path: ${CONDA_PATH_EXPANDED}"
+
+if [ -f "${CONDA_PATH_EXPANDED}/etc/profile.d/conda.sh" ]; then
+    source "${CONDA_PATH_EXPANDED}/etc/profile.d/conda.sh"
+    conda activate hrgym
+else
+    echo "Error: conda.sh not found at ${CONDA_PATH_EXPANDED}/etc/profile.d/conda.sh"
+    echo "Please check your conda installation path."
+    exit 1
 fi
 
 # Experiment configuration directories
