@@ -12,7 +12,7 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BASE_DIR"
 
 # Activate conda environment
-source ~/miniconda3/etc/profile.d/conda.sh
+source ${CONDA_PATH}/etc/profile.d/conda.sh
 conda activate hrgym
 
 # Environment configurations
@@ -29,6 +29,7 @@ ENVIRONMENTS=("lift" "can" "square" "tool_hang")
 # Parse command line arguments
 SPECIFIC_ENV=""
 PARALLEL_MODE=false
+CONDA_PATH="~/anaconda3"
 while [[ $# -gt 0 ]]; do
     case $1 in
         --name)
@@ -39,13 +40,18 @@ while [[ $# -gt 0 ]]; do
             PARALLEL_MODE=true
             shift
             ;;
+        --conda-path)
+            CONDA_PATH="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown parameter: $1"
-            echo "Usage: $0 [--name ENVIRONMENT_NAME] [--parallel]"
+            echo "Usage: $0 [--name ENVIRONMENT_NAME] [--parallel] [--conda-path PATH]"
             echo "Available environments: ${ENVIRONMENTS[*]}"
             echo "Options:"
-            echo "  --name ENV_NAME    Run experiments only for specific environment"
-            echo "  --parallel         Run all experiments in parallel (default: sequential)"
+            echo "  --name ENV_NAME        Run experiments only for specific environment"
+            echo "  --parallel             Run all experiments in parallel (default: sequential)"
+            echo "  --conda-path PATH      Path to conda installation (default: ~/anaconda3)"
             exit 1
             ;;
     esac
