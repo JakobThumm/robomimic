@@ -95,10 +95,10 @@ Make sure to check with `tmux attach -t can-training` and then detach with `Ctrl
 
 ### Evaluation
 ```
-tmux new-session -d -s lift-eval './run_all_experiments.sh --name lift'
-tmux new-session -d -s can-eval './run_all_experiments.sh --name can'
-tmux new-session -d -s square-eval './run_all_experiments.sh --name square'
-tmux new-session -d -s tool-hang-eval './run_all_experiments.sh --name tool_hang'
+tmux new-session -d -s lift-eval './run_all_experiments.sh --name lift --parallel'
+tmux new-session -d -s can-eval './run_all_experiments.sh --name can --parallel'
+tmux new-session -d -s square-eval './run_all_experiments.sh --name square --parallel'
+tmux new-session -d -s tool-hang-eval './run_all_experiments.sh --name tool_hang --parallel'
 ```
 
 ## Troubleshooting

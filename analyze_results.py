@@ -61,7 +61,7 @@ def main():
     """Main function to analyze all results and create summary."""
     
     # Base results directory
-    results_dir = Path("/home/jakob/Promotion/code/robomimic/results")
+    results_dir = Path("/home/jakob/Promotion/code/robomimic/results_selection")
     
     if not results_dir.exists():
         print(f"Results directory not found: {results_dir}")
