@@ -328,27 +328,106 @@ done
 echo "All required models found. Starting experiments..."
 echo ""
 
-# Run experiments for each environment sequentially
-for env in "${ENVIRONMENTS[@]}"; do
-    human_env="${ENV_MAP[$env]}"
+# Run experiments
+if [ "$PARALLEL_MODE" = true ]; then
     echo "========================================"
-    echo "Starting experiments for environment: $env"
-    echo "Using HumanEnv: $human_env"
+    echo "Starting ALL experiments in PARALLEL mode"
     echo "========================================"
     
-    # Run each config directory
-    for config_dir in "${CONFIG_DIRS[@]}"; do
-        if [ "$PARALLEL_MODE" = true ]; then
-            run_configs_parallel "$env" "$config_dir" "$human_env" "$error_log"
-        else
-            run_configs_sequential "$env" "$config_dir" "$human_env" "$error_log"
-        fi
-        echo ""
+    # Array to store all background process PIDs
+    all_pids=()
+    total_experiments=0
+    
+    # Start all experiments across all environments and config directories
+    for env in "${ENVIRONMENTS[@]}"; do
+        human_env="${ENV_MAP[$env]}"
+        echo "Queuing experiments for environment: $env (${human_env})"
+        
+        for config_dir in "${CONFIG_DIRS[@]}"; do
+            full_config_dir="$BASE_DIR/experiment_configs_selection/$config_dir"
+            
+            if [ ! -d "$full_config_dir" ]; then
+                echo "Warning: Config directory does not exist: $full_config_dir"
+                continue
+            fi
+            
+            # Start all configs in this directory in parallel
+            for config_file in "$full_config_dir"/*.json; do
+                if [ -f "$config_file" ]; then
+                    config_name=$(basename "$config_file" .json)
+                    total_experiments=$((total_experiments+1))
+                    
+                    echo "Starting experiment $total_experiments: $env/$config_dir/$config_name"
+                    
+                    # Run experiment in background
+                    (
+                        echo "========================================"
+                        echo "PARALLEL Experiment: $config_name"
+                        echo "Environment: $env | Config Directory: $config_dir"
+                        echo "Started at: $(date)"
+                        echo "========================================"
+                        
+                        start_time=$(date +%s)
+                        
+                        if run_experiment "$env" "$config_dir" "$config_file" "$human_env" "$error_log"; then
+                            end_time=$(date +%s)
+                            duration=$((end_time - start_time))
+                            echo "SUCCESS: $env/$config_dir/$config_name completed in ${duration} seconds"
+                        else
+                            end_time=$(date +%s)
+                            duration=$((end_time - start_time))
+                            echo "FAILED: $env/$config_dir/$config_name failed after ${duration} seconds"
+                        fi
+                    ) &
+                    
+                    # Store the PID
+                    all_pids+=($!)
+                fi
+            done
+        done
     done
     
-    echo "Completed all experiments for environment: $env"
-    echo ""
-done
+    echo "========================================"
+    echo "All $total_experiments experiments started in parallel"
+    echo "Waiting for all experiments to complete..."
+    echo "========================================"
+    
+    # Wait for all background processes to complete
+    successful_experiments=0
+    failed_experiments=0
+    
+    for pid in "${all_pids[@]}"; do
+        if wait "$pid"; then
+            successful_experiments=$((successful_experiments+1))
+        else
+            failed_experiments=$((failed_experiments+1))
+        fi
+    done
+    
+    echo "========================================"
+    echo "ALL PARALLEL EXPERIMENTS COMPLETED!"
+    echo "Total: $total_experiments | Success: $successful_experiments | Failed: $failed_experiments"
+    echo "========================================"
+
+else
+    # Sequential mode - run experiments for each environment sequentially
+    for env in "${ENVIRONMENTS[@]}"; do
+        human_env="${ENV_MAP[$env]}"
+        echo "========================================"
+        echo "Starting experiments for environment: $env"
+        echo "Using HumanEnv: $human_env"
+        echo "========================================"
+        
+        # Run each config directory
+        for config_dir in "${CONFIG_DIRS[@]}"; do
+            run_configs_sequential "$env" "$config_dir" "$human_env" "$error_log"
+            echo ""
+        done
+        
+        echo "Completed all experiments for environment: $env"
+        echo ""
+    done
+fi
 
 echo "========================================"
 echo "ALL EXPERIMENTS COMPLETED!"
