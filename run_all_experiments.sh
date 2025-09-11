@@ -19,6 +19,14 @@ declare -A ENV_MAP=(
     ["tool_hang"]="ToolHangHumanEnv"
 )
 
+# Time horizon configurations for each task
+declare -A HORIZON_MAP=(
+    ["lift"]=400
+    ["can"]=600
+    ["square"]=600
+    ["tool_hang"]=800
+)
+
 # Available environments (based on models found)
 ENVIRONMENTS=("lift" "can" "square" "tool_hang")
 
@@ -106,6 +114,9 @@ run_experiment() {
     local human_env=$4
     local error_log_path=$5
     
+    # Get task-specific horizon
+    local horizon=${HORIZON_MAP[$env]}
+    
     # Extract config name without extension for naming
     local config_name=$(basename "$config_file" .json)
     
@@ -126,8 +137,8 @@ run_experiment() {
     # Run the experiment and capture exit code
     python robomimic/scripts/run_trained_agent.py \
         --agent "$agent_path" \
-        --n_rollouts 100 \
-        --horizon 400 \
+        --n_rollouts 50 \
+        --horizon "$horizon" \
         --seed 0 \
         --video_path "$video_path" \
         --video_skip 1 \
